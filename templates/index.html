@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Denoising with BM3D</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            text-align: center;
+        }
+        input[type="file"], input[type="number"] {
+            margin-bottom: 10px;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+            margin-top: 20px;
+        }
+        #psnr-value {
+            margin-top: 20px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Upload an Image for Denoising</h1>
+        <input type="file" id="imageUpload" accept="image/*">
+        <br>
+        <label for="sigma">Noise Level (Sigma):</label>
+        <input type="number" id="sigma" name="sigma" step="0.01" min="0" value="0.1">
+        <br>
+        <label for="sigma_psd">BM3D Sigma (for denoising):</label>
+        <input type="number" id="sigma_psd" name="sigma_psd" step="0.01" min="0" value="0.1">
+        <br>
+        <button id="processButton" onclick="uploadImage()">Process Image</button>
+
+        <div id="results">
+            <h3>Denoised Image:</h3>
+            <img id="denoisedImage" style="display:none;" />
+            <div id="psnr-value" style="display:none;"></div>
+        </div>
+    </div>
+
+    <script>
+        async function uploadImage() {
+            const processButton = document.getElementById('processButton');
+            const fileInput = document.getElementById('imageUpload');
+            const sigma = document.getElementById('sigma').value;
+            const sigma_psd = document.getElementById('sigma_psd').value;
+
+            if (!fileInput.files[0]) {
+                alert('Please upload an image before processing.');
+                return;
+            }
+
+            // Disable the button to prevent multiple clicks
+            processButton.disabled = true;
+            processButton.textContent = 'Processing...';  // Change button text to indicate processing
+
+            const formData = new FormData();
+            formData.append('image', fileInput.files[0]);
+            formData.append('sigma', sigma);
+            formData.append('sigma_psd', sigma_psd);
+
+            const response = await fetch('/process', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const psnr = data.psnr;
+                const denoisedImageBase64 = data.denoised_image;
+
+                // Display PSNR value
+                const psnrValueElement = document.getElementById('psnr-value');
+                psnrValueElement.textContent = `PSNR: ${psnr.toFixed(2)}`;
+                psnrValueElement.style.display = 'block';
+
+                // Display denoised image
+                const denoisedImageElement = document.getElementById('denoisedImage');
+                denoisedImageElement.src = `data:image/png;base64,${denoisedImageBase64}`;
+                denoisedImageElement.style.display = 'block';
+            } else {
+                alert('Image processing failed. Please try again.');
+            }
+
+            // Re-enable the button after processing is done
+            processButton.disabled = false;
+            processButton.textContent = 'Process Image';  // Reset button text
+        }
+    </script>
+</body>
+</html>
